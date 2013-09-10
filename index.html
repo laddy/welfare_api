@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>介護サービスコード検索</title>
+<!-- Triplety Version: 1.0.0 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" type="text/css" href="library/html5reset-1.6.1.css">
+<link rel="stylesheet" type="text/css" href="library/normalize-2.0.1.css">
+<link rel="stylesheet" type="text/css" href="library/bootstrap.2.3.1.css">
+
+<style>
+
+body {
+    padding-top: 60px;
+}
+
+table {
+    font-size: 10px;
+}
+#input_code {
+    display : none;
+}
+#service_type {
+    display : none;
+}
+
+.footer {
+  text-align: center;
+  padding: 30px 0;
+  margin-top: 70px;
+  border-top: 1px solid #e5e5e5;
+  background-color: #f5f5f5;
+}
+.footer p {
+  margin-bottom: 0;
+  color: #777;
+}
+.footer-links {
+  margin: 10px 0;
+}
+.footer-links li {
+  display: inline;
+  padding: 0 2px;
+}
+.footer-links li:first-child {
+  padding-left: 0;
+}
+
+
+</style>
+
+
+</head>
+
+<body>
+<div class="navbar navbar-inverse navbar-fixed-top">
+  <div class="navbar-inner">
+    <div class="container">
+      <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+        <a class="brand" href="./">介護サービスコード検索</a>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+   <h2>平成24年度介護報酬サービスコード検索</h2>
+   <p>介護請求用のサービスコード検索ツールです。<br>
+   サービスの種類を選択して、コードか分類かサービス名称で検索を行うことができます。<br>
+   データに変換したコードの一覧SQLは<a href="./welfare_2013-09-09.sql.zip">ここ</a>に置いておきます。
+   </p>
+
+    <form>
+        <fieldset>
+        
+<script type="text/javascript"><!--
+google_ad_client = "ca-pub-7623647326062512";
+/* 介護サービスコード検索 */
+google_ad_slot = "5300813029";
+google_ad_width = 728;
+google_ad_height = 90;
+//-->
+</script>
+<script type="text/javascript"
+src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+</script>
+
+<!--
+        <label>サービス種類</label>
+        <select id="service_list">
+            <option value="" selected="selected">サービス種類全て</option>
+        </select>
+        <select id="service_class" class="hide">
+            
+        </select>
+-->
+        <label>サービスコード or 分類検索</label>
+        <select id="service_id">
+            <option value="0">全サービス種類</option>
+        </select>
+        <input type="number" id="input_code" maxlength="4" placeholder="1111">
+        
+        <select id="service_type">
+            <option value="0">全ての分類から</option>
+        </select>
+
+        <label>サービス内容略称</label>
+        <input type="text" id="input_name" placeholder="身体日中">
+
+        <button type="submit" class="btn">検索</button>
+        </fieldset>
+    </form>
+
+
+    <table id="view_service" class="table table-condensed table-bordered">
+        <thead>
+        <tr>
+            <th>種類</th>
+            <th>項目</th>
+            <th>サービス内容略称</th>
+            <th>算定単位</th>
+            <th>分類</th>
+        </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+
+<footer class="footer">
+  <div class="container">
+    <p>Copyright YuyaTanaka <a href="http://twitter.com/laddy" target="_blank">@laddy</a></p>
+    <p>厚生労働省の<a href="http://www.mhlw.go.jp/bunya/shougaihoken/jiritsushien/houshusantei_2404.html">公開されている報酬算定構造・サービスコード表等</a>を参考に作成しています。
+      </p>
+  </div>
+</footer>
+
+
+<script id="service_id_template" type="text/x-jsrender">
+<option value="{{:code}}">{{:name}}</option>
+</script>
+
+<script id="service_type_template" type="text/x-jsrender">
+<option value="{{:name}}">{{:name}}</option>
+</script>
+
+<script id="service_result_template" type="text/x-jsrender">
+<tr>
+<td>{{:service_id}}</td>
+<td>{{:item_id}}</td>
+<td>{{:name}}</td>
+<td>{{:synthesis}}</td>
+<!-- <td>{{:unit}}</td> -->
+<td>{{:type}}</td>
+<!-- <td>{{:calc}}</td> -->
+</tr>
+</script>
+
+
+<!-- <script src="library/jquery-2.0.3.min.js"></script>
+-->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+<script src="library/bootstrap.2.3.1.min.js"></script>
+<script src="library/jsrender.js"></script>
+
+<script>
+
+$(function(){
+    var list = [
+        {"code" : "11", "name" : "居宅介護 [11]"}, 
+        {"code" : "12", "name" : "重度訪問介護 [12]"}, 
+        {"code" : "15", "name" : "同行援護 [15]"}, 
+        {"code" : "13", "name" : "行動援護 [13]"}, 
+        {"code" : "21", "name" : "療養介護 [21]"}, 
+        {"code" : "22", "name" : "生活介護 [22]"}, 
+        {"code" : "22", "name" : "経過的生活介護 [22]"}, 
+        {"code" : "24", "name" : "短期入所 [24]"}, 
+        {"code" : "14", "name" : "重度包括 [14]"}, 
+        {"code" : "31", "name" : "共同生活介護（ケアホーム） [31]"}, 
+        {"code" : "32", "name" : "施設入所支援 [32]"}, 
+        {"code" : "32", "name" : "経過的施設入所支援 [32]"}, 
+        {"code" : "41", "name" : "自立訓練（機能訓練） [41]"}, 
+        {"code" : "42", "name" : "自立訓練（生活訓練） [42]"}, 
+        {"code" : "34", "name" : "宿泊型自立訓練 [34]"}, 
+        {"code" : "43", "name" : "就労移行支援 [43]"}, 
+        {"code" : "44", "name" : "就労移行支援（養成） [44]"}, 
+        {"code" : "45", "name" : "就労継続支援A型 [45]"}, 
+        {"code" : "46", "name" : "就労継続支援B型 [46]"}, 
+        {"code" : "33", "name" : "共同生活援助(グループホーム) [33]"}, 
+        {"code" : "52", "name" : "計画相談支援 [52]"}, 
+        {"code" : "55", "name" : "障害児相談支援 [55]"}, 
+        {"code" : "53", "name" : "地域相談支援（地域移行支援） [53]"}, 
+        {"code" : "54", "name" : "地域相談支援（地域定着支援） [54]"}, 
+        {"code" : "71", "name" : "福祉型障害児入所施設 [71]"}, 
+        {"code" : "72", "name" : "医療型障害児入所施設 [72]"}, 
+        {"code" : "61", "name" : "児童発達支援 [61]"}, 
+        {"code" : "62", "name" : "医療型児童発達支援 [62]"}, 
+        {"code" : "63", "name" : "放課後等デイ [63]"}, 
+        {"code" : "64", "name" : "保育所等訪問支援 [64]"}, 
+    ];
+
+    $("#service_id").append(
+        $("#service_id_template").render(list)
+    );
+
+    var type = {
+        "11" : [
+            {"name" : "居宅介護(身介、単一日中)"},
+            {"name" : "居宅介護(身介、単一早朝夜間)"},
+            {"name" : "居宅介護(身介、単一深夜)"},
+            {"name" : "居宅介護(身介、合成深夜)"},
+            {"name" : "居宅介護(身介、合成早朝)"},
+            {"name" : "居宅介護(身介、合成日中)"},
+            {"name" : "居宅介護(身介、合成夜間１)"},
+            {"name" : "居宅介護(身介、合成夜間２)"},
+            {"name" : "居宅介護(身介、2h未合成１)"},
+            {"name" : "居宅介護(身介、2h未合成２)"},
+            {"name" : "居宅介護(身介、2h未合成３)"},
+            {"name" : "居宅介護(身介、日中増分)"},
+            {"name" : "居宅介護(身介、早朝夜間増分)"},
+            {"name" : "居宅介護(身介、深夜増分)"},
+            {"name" : "居宅介護(身介重度、単一日中・早朝・夜間)"},
+            {"name" : "居宅介護(身介重度、単一深夜)"},
+            {"name" : "居宅介護(身介重度、合成１)"},
+            {"name" : "居宅介護(身介重度、日中早朝増分)"},
+            {"name" : "居宅介護(身介重度、夜間深夜増分)"},
+            {"name" : "居宅介護(通院身体、単一日中)"},
+            {"name" : "居宅介護(通院身体、単一早朝夜間)"},
+            {"name" : "居宅介護(通院身体、単一深夜)"},
+            {"name" : "居宅介護(通院身体、合成深夜)"},
+            {"name" : "居宅介護(通院身介、合成早朝)"},
+            {"name" : "居宅介護(通院身体、合成日中)"},
+            {"name" : "居宅介護(通院身体、合成夜間１)"},
+            {"name" : "居宅介護(通院身体、合成夜間２)"},
+            {"name" : "居宅介護(通院身体、2h未合成１)"},
+            {"name" : "居宅介護(通院身体、2h未合成２)"},
+            {"name" : "居宅介護(通院身介、2h未合成３)"},
+            {"name" : "居宅介護(通院身体、日中増分)"},
+            {"name" : "居宅介護(通院身体、早朝夜間増分)"},
+            {"name" : "居宅介護(通院身体、深夜増分)"},
+            {"name" : "居宅介護(通院重度、単一日中・早朝・夜間)"},
+            {"name" : "居宅介護(通院重度、単一深夜)"},
+            {"name" : "居宅介護(通院重度、合成１)"},
+            {"name" : "居宅介護(通院重度、日中早朝増分)"},
+            {"name" : "居宅介護(通院重度、夜間深夜増分)"},
+            {"name" : "居宅介護(家援、単一日中)"},
+            {"name" : "居宅介護(家援、単一早朝夜間)"},
+            {"name" : "居宅介護(家援、単一深夜)"},
+            {"name" : "居宅介護(家援、合成１)"},
+            {"name" : "居宅介護(家援、合成２)"},
+            {"name" : "居宅介護(家援、2h未合成１)"},
+            {"name" : "居宅介護(家援、日中増分)"},
+            {"name" : "居宅介護(家援、早朝夜間増分)"},
+            {"name" : "居宅介護(家援、深夜増分)"},
+            {"name" : "居宅介護(家援重度、単一日中)"},
+            {"name" : "居宅介護(家援重度、単一早朝夜間)"},
+            {"name" : "居宅介護(家援重度、単一深夜)"},
+            {"name" : "居宅介護(家援重度、合成１)"},
+            {"name" : "居宅介護(家援重度、合成２)"},
+            {"name" : "居宅介護(家援重度、2h未合成１)"},
+            {"name" : "居宅介護(家援重度、日中増分)"},
+            {"name" : "居宅介護(家援重度、早朝夜間増分)"},
+            {"name" : "居宅介護(家援重度、深夜増分)"},
+            {"name" : "居宅介護(通院家援、単一日中)"},
+            {"name" : "居宅介護(通院家援、単一早朝夜間)"},
+            {"name" : "居宅介護(通院家援、単一深夜)"},
+            {"name" : "居宅介護(通院家援、合成１)"},
+            {"name" : "居宅介護(通院家援、合成２)"},
+            {"name" : "居宅介護(通院家援、2h未合成１)"},
+            {"name" : "居宅介護(通院家援、日中増分)"},
+            {"name" : "居宅介護(通院家援、早朝夜間増分)"},
+            {"name" : "居宅介護(通院家援、深夜増分)"},
+            {"name" : "居宅介護(通院家援重度、単一日中)"},
+            {"name" : "居宅介護(通院家援重度、単一早朝夜間深夜)"},
+            {"name" : "居宅介護(通院家援重度、合成)"},
+            {"name" : "居宅介護(通院家援重度、2h未合成１)"},
+            {"name" : "居宅介護(通院家援重度、日中増分)"},
+            {"name" : "居宅介護(通院家援重度、早朝夜間深夜増分)"},
+            {"name" : "居宅介護(通院等乗降介助加算)"},
+            {"name" : "居宅介護(通院等乗降介助重度加算)"},
+            {"name" : "居宅介護(単独加算)"},
+        ],
+        "12" : [
+            {"name" : "重度訪問"},
+            {"name" : "重度訪問(早朝)"},
+            {"name" : "重度訪問(夜間)"},
+            {"name" : "重度訪問(深夜)"},
+        ],
+        "15" : [
+            {"name" : "同行援護(同行援護1、単一日中)"},
+            {"name" : "同行援護(同行援護1、単一早朝夜間)"},
+            {"name" : "同行援護(同行援護1、単一深夜)"},
+            {"name" : "同行援護(同行援護1、合成深夜)"},
+            {"name" : "同行援護(同行援護1、合成早朝)"},
+            {"name" : "同行援護(同行援護1、合成日中)"},
+            {"name" : "同行援護(同行援護1、合成夜間１)"},
+            {"name" : "同行援護(同行援護1、合成夜間２)"},
+            {"name" : "同行援護(同行援護1、2h未合成１)"},
+            {"name" : "同行援護(同行援護1、2h未合成２)"},
+            {"name" : "同行援護(同行援護1、2h未合成３)"},
+            {"name" : "同行援護(同行援護1、日中増分)"},
+            {"name" : "同行援護(同行援護1、早朝夜間増分)"},
+            {"name" : "同行援護(同行援護1、深夜増分)"},
+            {"name" : "同行援護(同行援護2、単一日中)"},
+            {"name" : "同行援護(同行援護2、単一早朝夜間)"},
+            {"name" : "同行援護(同行援護2、単一深夜)"},
+            {"name" : "同行援護(同行援護2、合成１)"},
+            {"name" : "同行援護(同行援護2、合成２)"},
+            {"name" : "同行援護(同行援護2、2h未合成１)"},
+            {"name" : "同行援護(同行援護2、日中増分)"},
+            {"name" : "同行援護(同行援護2、早朝夜間増分)"},
+            {"name" : "同行援護(同行援護2、深夜増分)"},
+            {"name" : "同行援護(単独加算)"},
+        ],
+        "13" : [
+            {"name" : "行動援護"},
+        ],
+        "21" : [
+            {"name" : "療養介護(基本)"},
+            {"name" : "療養介護(定超)"},
+            {"name" : "療養介護(生活支援員他欠員)"},
+        ],
+        "22" : [
+            {"name" : "生活介護(基本)"},
+            {"name" : "生活介護(定超)"},
+            {"name" : "生活介護(生活支援員)"},
+            {"name" : "経過的生活介護(基本１)"},
+            {"name" : "経過的生活介護(基本２)"},
+            {"name" : "経過的生活介護(基本３)"},
+            {"name" : "経過的生活介護(基本４)"},
+            {"name" : "経過的生活介護(基本５)"},
+            {"name" : "経過的生活介護(基本６)"},
+            {"name" : "経過的生活介護(基本７)"},
+            {"name" : "経過的生活介護(基本８)"},
+            {"name" : "経過的生活介護(基本９)"},
+            {"name" : "経過的生活介護(基本１０)"},
+            {"name" : "経過的生活介護(定超１)"},
+            {"name" : "経過的生活介護(定超２)"},
+            {"name" : "経過的生活介護(定超３)"},
+            {"name" : "経過的生活介護(定超４)"},
+            {"name" : "経過的生活介護(定超５)"},
+        ],
+        "24" : [
+            {"name" : "短期入所(基本)"},
+            {"name" : "短期入所(定超・従業者)"},
+        ],
+        "14" : [
+            {"name" : "重度包括支援"},
+        ],
+        "31" : [
+            {"name" : "共同生活介護(ケアホーム)(基本１)"},
+            {"name" : "共同生活介護(ケアホーム)(基本２)"},
+            {"name" : "共同生活介護(ケアホーム)(世話人等欠員)"},
+        ],
+        "32" : [
+            {"name" : "施設入所支援(基本１)"},
+            {"name" : "施設入所支援(基本2)"},
+            {"name" : "施設入所支援(定超)"},
+            {"name" : "経過的施設入所支援(基本１)"},
+            {"name" : "経過的施設入所支援(基本２)"},
+            {"name" : "経過的施設入所支援(基本３)"},
+            {"name" : "経過的施設入所支援(基本４)"},
+            {"name" : "経過的施設入所支援(基本５)"},
+            {"name" : "経過的施設入所支援(基本６)"},
+            {"name" : "経過的施設入所支援(基本７)"},
+            {"name" : "経過的施設入所支援(基本８)"},
+            {"name" : "経過的施設入所支援(基本９)"},
+            {"name" : "経過的施設入所支援(基本１０)"},
+            {"name" : "経過的施設入所支援(定超１)"},
+            {"name" : "経過的施設入所支援(定超２)"},
+            {"name" : "経過的施設入所支援(定超３)"},
+            {"name" : "経過的施設入所支援(定超４)"},
+            {"name" : "経過的施設入所支援(定超５)"},
+        ],
+        "41" : [
+            {"name" : "自立訓練(機能・基本)"},
+            {"name" : "自立訓練(機能・定員超過)"},
+            {"name" : "自立訓練(機能・生活支援員等欠員)"},
+        ],
+        "42" : [
+            {"name" : "自立訓練(生活・基本)"},
+            {"name" : "自立訓練(生活・定員超過)"},
+            {"name" : "自立訓練(生活・生活支援員等欠員)"},
+        ],
+        "34" : [
+            {"name" : "宿泊型自立訓練(基本・定超・人欠)"},
+        ],
+        "43" : [
+            {"name" : "就労移行支援(基本)"},
+            {"name" : "就労移行支援(定超)"},
+            {"name" : "就労移行支援(人欠等)"},
+        ],
+        "44" : [
+            {"name" : "就労移行支援(養成・基本)"},
+            {"name" : "就労移行支援(養成・定超)"},
+            {"name" : "就労移行支援(養成・人欠等)"},
+        ],
+        "45" : [
+            {"name" : "就労継続支援(A・基本)"},
+            {"name" : "就労継続支援(A・定超)"},
+            {"name" : "就労継続支援(A・人欠)"},
+        ],
+        "46" : [
+            {"name" : "就労継続支援(B・基本)"},
+            {"name" : "就労継続支援(B・定超)"},
+            {"name" : "就労継続支援(B・生活支援員等欠員)"},
+        ],
+        "33" : [
+            {"name" : "共同生活援助(グループホーム)"},
+        ],
+        "52" : [
+            {"name" : "計画相談支援"},
+            {"name" : "計画相談支援(合成)"},
+        ],
+        "55" : [
+            {"name" : "障害児相談支援"},
+            {"name" : "障害児相談支援(合成)"},
+        ],
+        "53" : [
+            {"name" : "地域移行支援"},
+        ],
+        "54" : [
+            {"name" : "地域定着支援"},
+        ],
+        "71" : [
+            {"name" : "障害児入所施設(基本１)"},
+            {"name" : "障害児入所施設(基本２)"},
+            {"name" : "障害児入所施設(基本３)"},
+            {"name" : "障害児入所施設(基本４)"},
+            {"name" : "障害児入所施設(基本５)"},
+            {"name" : "障害児入所施設(基本６)"},
+            {"name" : "障害児入所施設(基本７)"},
+            {"name" : "障害児入所施設(基本８)"},
+            {"name" : "障害児入所施設(基本９)"},
+            {"name" : "障害児入所施設(基本１０)"},
+            {"name" : "障害児入所施設(定超１)"},
+            {"name" : "障害児入所施設(定超２)"},
+            {"name" : "障害児入所施設(定超３)"},
+            {"name" : "障害児入所施設(定超４)"},
+            {"name" : "障害児入所施設(定超５)"},
+        ],
+        "72" : [
+            {"name" : "医療型障害児入所施設(基本・定超)"},
+        ],
+        "61" : [
+            {"name" : "児童発達支援(基本１)"},
+            {"name" : "児童発達支援(基本２)"},
+            {"name" : "児童発達支援(基本３)"},
+            {"name" : "児童発達支援(基本４)"},
+            {"name" : "児童発達支援(基本５)"},
+            {"name" : "児童発達支援(定超１)"},
+            {"name" : "児童発達支援(定超２)"},
+            {"name" : "児童発達支援(定超３)"},
+            {"name" : "児童発達支援(定超４・人欠)"},
+        ],
+        "62" : [
+            {"name" : "医療型児童発達支援(基本・定超・人欠)"},
+        ],
+        "63" : [
+            {"name" : "放課後等デイ(基本)"},
+            {"name" : "放課後等デイ(定超)"},
+            {"name" : "放課後等デイ(人欠)"},
+        ],
+        "64" : [
+            {"name" : "保育所等訪問支援(基本)"},
+        ],
+    };
+
+
+    $(document).on('change', '#service_id', function(){
+        if ( "0" == $("#service_id").val() )
+        {
+            $("#input_code").hide();
+            $("#service_type").hide();
+            $("#input_name").show();
+        }
+        else
+        {
+            $("#input_code").show();
+            $("#service_type").show();
+            $("#input_name").hide(); 
+
+            $("#service_type").empty();
+            $("#service_type").append('<option value="0">全ての分類から</option>');
+            $("#service_type").append(
+                $("#service_type_template").render(type[$("#service_id").val()])
+            );
+            $("#service_type").val("0");
+        }
+    });
+
+    $(document).on('submit', 'form', function() {
+        $("#view_service tbody").empty();
+        var service_id   = ( null != $("#service_id").val() )   ? $("#service_id").val()   : '';
+        var service_type = ( null != $("#service_type").val() ) ? $("#service_type").val() : '';
+        var input_code   = ( null != $("#input_code").val() )   ? $("#input_code").val()   : '';
+        var input_name   = ( null != $("#input_name").val() )   ? $("#input_name").val()   : '';
+
+        $.getJSON(
+            'api.php?service_id=' + service_id + '&item_id=' + input_code + '&name=' + input_name + '&type=' + service_type,
+            function (data) {
+                $("#view_service tbody").append(
+                    $("#service_result_template").render(data)
+                );
+            }
+        );
+        
+        return false;
+    });
+});
+</script>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-3738131-7']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+</body>
+</html>
