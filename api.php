@@ -5,8 +5,8 @@ $database = new medoo([
     'database_type' => 'mysql',
     'database_name' => 'welfare',
     'server'        => '127.0.0.1',
-    'username'      => 'medoo',
-    'password'      => 'uW3GBFfE',
+    'username'      => 'username',
+    'password'      => 'password',
 ]);
 
 $search_array = array();
